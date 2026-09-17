@@ -1,0 +1,33 @@
+services:
+
+  dev:
+    image: yearbook-dev
+    container_name: yearbook-preview
+    volumes:
+      # The container installs a linux/musl arm64 tree; the host's editor needs a
+      # darwin-arm64 one. Keep them apart: this named volume holds the container's
+      # node_modules so `pnpm i` below cannot write it back through the /app bind
+      # mount. Run `pnpm install` on the host separately, for the language server.
+      - node_modules:/app/node_modules
+      - ../:/app
+      - ../library/db:/db
+      - ../library/files:/files
+
+    environment:
+      # `vite preview` is served through the preview tunnel, so ORIGIN has to be the public
+      # URL or SvelteKit rejects form posts as cross-origin.
+      ORIGIN: 'https://yearbook-preview.proute.org'
+      TZ: 'America/New_York'
+
+    stop_signal: SIGKILL
+    working_dir: /app
+    command: sh -c "pnpm i && pnpx prisma generate && pnpm run build && pnpm run preview --host"
+    init: true
+    # `vite preview` listens on 4173, not 5173 -- mapping 5173 left nothing to connect to.
+    ports:
+      - 4173:4173
+    tty: true
+    stdin_open: true
+
+volumes:
+  node_modules:

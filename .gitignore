@@ -1,0 +1,39 @@
+node_modules
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+# .env holds this machine's paths and ADMIN_EMAILS -- the repository is public, and the
+# deployment gets these from the compose file / the server instead. .env.example documents
+# what has to be set.
+.env
+.env.*
+!.env.example
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+/generated/prisma
+
+
+/library
+/generated
+/.vscode
+/package
+*.bak
+.pnpm-store
+
+tmp
+
+tunnel.sh

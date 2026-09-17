@@ -1,0 +1,15 @@
+services:
+  yearbook:
+    image: 'keenanrnicholson/yearbook:local'
+    container_name: yearbook
+    restart: unless-stopped
+    volumes:
+      - ../library/db:/db
+      - ../library/files:/files
+    environment:
+      PUID: 1000
+      PGID: 1000
+      ORIGIN: 'http://localhost:5173'
+      TZ: 'America/New_York'
+    ports:
+      - '5173:3000'

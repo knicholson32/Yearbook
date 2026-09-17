@@ -1,0 +1,211 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ------------------------------------------------------------------------------------------------
+// Image
+// ------------------------------------------------------------------------------------------------
+
+model Image {
+  id                String  @id @default(uuid())
+  original          String
+  originalExtension String
+  full              String?
+  i2048             String?
+  i1024             String?
+  i768              String?
+  i512              String
+  i256              Bytes
+  i128              Bytes
+
+  hash String
+
+  uploadedBy User     @relation(fields: [userId], references: [id])
+
+  /// People who appear in this photo. Named, because otherwise Prisma pairs this off
+  /// against `Person.profileImage` as a single one-to-many -- which silently turns
+  /// "tag someone in a photo" into "make this their avatar", and caps each person at
+  /// one photo.
+  includes Person[] @relation("PeopleInImage")
+
+  /// People using this photo as their avatar.
+  profileFor Person[] @relation("PersonProfileImage")
+
+  month Month? @relation(fields: [monthId], references: [id])
+
+  /// Set when a photo was uploaded to a year but could not be placed in a month -- its
+  /// capture date fell outside that year, or it had none. It waits here until someone
+  /// files it. A photo is either in a month or pending, never both.
+  pendingFor   Year? @relation("PendingImages", fields: [pendingForId], references: [id])
+  pendingForId Int?
+
+  /// Free-text note about the photo. Who is in it is tracked by `includes`.
+  caption String?
+
+  /// Manual position within the month. Ties are broken by `date`.
+  sort Int @default(0)
+
+  /// Camera fields lifted out of EXIF at upload, for display and querying.
+  make  String?
+  model String?
+  lens  String?
+
+  /// Every other EXIF tag that survived sanitising, so nothing is thrown away.
+  exif Json?
+
+  /// Region of the original to build every derivative from, as fractions of the full
+  /// image (0-1). Used by profile pictures so a face can be framed instead of relying on
+  /// a centre crop. Null means use the whole frame. The original is never modified, so a
+  /// crop can be redone or cleared at any point.
+  cropX      Float?
+  cropY      Float?
+  cropWidth  Float?
+  cropHeight Float?
+
+  /// Bumped whenever the row changes, including when derivatives are rebuilt in place by
+  /// a crop. Image URLs carry it as `?v=`, because the id and size alone stay identical
+  /// and the browser would otherwise keep showing the copy it already cached.
+  updatedAt DateTime @default(now()) @updatedAt
+
+  /// Set when someone has decided this photo belongs in the month it is filed under, even
+  /// though its capture date says otherwise. Suppresses the mismatch warning for good.
+  dateWarningDismissed Boolean @default(false)
+
+  date      Int
+  latitude  Float?
+  longitude Float?
+  altitude  Float?
+
+  width       Int
+  height      Int
+  isHDR       Boolean
+  aspectRatio Decimal
+
+  hex     String
+  hexa    String
+  rgb     String
+  rgba    String
+  isLight Boolean
+  isDark  Boolean
+  userId  String
+  monthId String?
+
+  @@index([monthId, sort])
+  @@index([pendingForId])
+  @@map("images")
+}
+
+model Year {
+  id     Int     @id
+  months Month[]
+
+  /// Photos uploaded to this year that still need a month.
+  pending Image[] @relation("PendingImages")
+
+  /// Published to the Years tab, where every group sees the finished yearbook.
+  ///
+  /// Purely a visibility switch: a published year stays fully editable, and unpublishing
+  /// simply takes it off the shelf again. Only an admin can set it.
+  published Boolean @default(false)
+
+  /// When it was first published, so the shelf can order by it and say "published in March".
+  publishedAt DateTime?
+
+  /// Optional title shown on the cover under the year, e.g. "The Year of the Puppy".
+  title String?
+
+  /// Link to a printed photo book of this year, if one was ordered (Shutterfly and the like).
+  /// Shown on the shelf beside the cover. Set independently of publishing, since it is
+  /// usually ordered after the year is finished.
+  photobookUrl String?
+
+  @@map("year")
+}
+
+model Month {
+  id     String  @id @default(uuid())
+  year   Year    @relation(fields: [yearId], references: [id])
+  month  Int
+  images Image[]
+  yearId Int
+
+  /// One caption per group. A group only ever sees its own.
+  captions MonthCaption[]
+
+  @@unique([yearId, month])
+  @@map("month")
+}
+
+/// A group's note about a month -- what happened, who visited, why these photos.
+/// Scoped to the family, so each group writes its own and never sees anyone else's.
+model MonthCaption {
+  id String @id @default(uuid())
+
+  month   Month  @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  monthId String
+
+  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  familyId String
+
+  text String
+
+  updatedAt DateTime @default(now()) @updatedAt
+  /// Who last touched it, so the UI can say so.
+  updatedBy String?
+
+  @@unique([monthId, familyId])
+  @@map("month_captions")
+}
+
+model Settings {
+  setting String @id
+  value   String
+
+  @@map("settings")
+}
+
+model Family {
+  id     String   @id @default(uuid())
+  people Person[]
+
+  captions MonthCaption[]
+
+  @@map("families")
+}
+
+model Person {
+  id   String @id @default(uuid())
+  name String @unique
+
+  profileImage Image? @relation("PersonProfileImage", fields: [imageId], references: [id])
+
+  /// Photos this person appears in.
+  appearsIn Image[] @relation("PeopleInImage")
+
+  family   Family  @relation(fields: [familyId], references: [id])
+  imageId  String?
+  familyId String
+  user     User?
+
+  @@map("people")
+}
+
+model User {
+  id     String @id
+  person Person @relation(fields: [personId], references: [id])
+
+  gravatarHash String
+  role         String
+  images       Image[]
+  personId     String  @unique
+
+  @@map("users")
+}

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<!-- `viewport-fit=cover` lets the page reach under the notch and the home indicator;
+		     `env(safe-area-inset-*)` in the layout keeps content out from under them. Without
+		     it a standalone iOS app renders letterboxed with white bars. -->
+		<meta
+			id="viewport"
+			name="viewport"
+			content="width=device-width, initial-scale=1, viewport-fit=cover"
+		/>
+
+		<!--
+		  Pinch-zoom is off at mobile sizes, and left alone on a desktop.
+
+		  Two mechanisms, because one is not enough. The viewport meta is what Chrome on Android
+		  and an installed iOS app obey. **Safari in a browser tab deliberately ignores
+		  `user-scalable=no`** -- it has since iOS 10, so that alone would change nothing there --
+		  which is why the WebKit `gesture*` events are cancelled as well. Double-tap is a third
+		  gesture again, handled by `touch-action: manipulation` in the stylesheet.
+
+		  Inline and ahead of the body so it covers the very first gesture. Kept in sync with the
+		  media query so resizing a desktop window across the breakpoint behaves.
+		-->
+		<script>
+			(() => {
+				const BASE = 'width=device-width, initial-scale=1, viewport-fit=cover';
+				const LOCKED =
+					'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+
+				// Below Tailwind's `lg`, plus any installed app whatever its size.
+				const small = window.matchMedia('(max-width: 1023.98px)');
+				const installed = () =>
+					window.navigator.standalone === true ||
+					window.matchMedia('(display-mode: standalone)').matches;
+
+				const locked = () => small.matches || installed();
+
+				const apply = () =>
+					document
+						.getElementById('viewport')
+						?.setAttribute('content', locked() ? LOCKED : BASE);
+
+				apply();
+				small.addEventListener('change', apply);
+
+				// In a home-screen app, viewport units are not trustworthy: iOS can report `100svh`
+				// shorter than the real window there, so anything sized from them stops short of the
+				// bottom of the screen. `innerHeight` is the real height, and with no browser toolbar
+				// it does not change as the page scrolls -- so it is safe to publish as `--app-height`.
+				// A browser tab keeps using `svh`, where `innerHeight` *does* move with the toolbar
+				// and would resize full-height elements mid-scroll.
+				if (installed()) {
+					// Never shorter than the physical screen in the current orientation. Two rounds of
+					// measuring `innerHeight` alone still left a white bar on a home-screen install, so
+					// the screen size is used as a floor. If the web view actually starts below the
+					// status bar this overshoots by that bar's height, which only pushes the bottom of the
+					// cover a little past the fold -- the cover's text is padded well clear of that.
+					// iOS does not swap `screen.width`/`height` on rotation, hence the orientation check.
+					const screenHeight = () => {
+						const portrait = window.matchMedia('(orientation: portrait)').matches;
+						const long = Math.max(window.screen.width, window.screen.height);
+						const short = Math.min(window.screen.width, window.screen.height);
+						return portrait ? long : short;
+					};
+					const publish = () =>
+						document.documentElement.style.setProperty(
+							'--app-height',
+							`${Math.max(window.innerHeight, screenHeight())}px`
+						);
+					publish();
+					window.addEventListener('resize', publish);
+					window.addEventListener('orientationchange', () => setTimeout(publish, 300));
+				}
+
+				// Safari's own pinch events. Cancelling `gesturestart` is what actually stops the
+				// zoom in a browser tab; the later two keep a gesture already under way from taking
+				// effect. Guarded by `locked()` so a desktop browser keeps its zoom.
+				for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+					document.addEventListener(
+						type,
+						(event) => {
+							if (locked()) event.preventDefault();
+						},
+						{ passive: false }
+					);
+				}
+			})();
+		</script>
+
+		<!-- An uppercase "Y" in Merienda bold, matching the header wordmark. 16/32/48/64/256px in
+		     one file. Browsers ask for /favicon.ico on their own, but naming it keeps a cached
+		     default from winning. -->
+		<link rel="icon" href="/favicon.ico" sizes="any" />
+		<link rel="manifest" href="/manifest.webmanifest" />
+		<meta name="theme-color" content="#111827" />
+
+		<!-- iOS ignores most of the manifest. Home-screen installs read these instead: the
+		     apple-touch-icon for the icon, `apple-mobile-web-app-capable` for standalone
+		     (no Safari chrome), and `apple-mobile-web-app-title` for the name under it. -->
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-title" content="Yearbook" />
+		<!--
+		  `default`, not `black-translucent`.
+
+		  `black-translucent` draws the status bar *over* the page with white text, which is
+		  unreadable against this app's white nav in light mode. `default` gives the status bar
+		  its own space above the web view and lets iOS pick a legible colour for it, so the
+		  clock never lands on top of the menu.
+
+		  The `env(safe-area-inset-*)` padding below still matters: it resolves to zero at the
+		  top in this mode, but carries the home indicator at the bottom and the notch's
+		  shoulders in landscape.
+		-->
+		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>

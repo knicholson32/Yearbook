@@ -1,0 +1,43 @@
+# Never ship the host's (macOS/arm) modules into the linux image -- pnpm installs
+# them inside the container instead.
+node_modules
+.pnpm-store
+
+# VCS & editor
+.git
+.gitignore
+.vscode
+
+# Build output
+.svelte-kit
+build
+package
+.output
+.vercel
+.netlify
+.wrangler
+/generated
+/library
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker/
+Dockerfile*
+Makefile
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+*.bak
+
+
+tunnel.sh
+
+# A developer's environment never belongs in the image: the runtime values come from the
+# compose file / the server, and a copied .env would both leak local paths and let the
+# build succeed locally while failing in CI, where no such file exists.
+.env
+.env.*

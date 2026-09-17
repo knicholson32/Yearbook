@@ -1,0 +1,32 @@
+services:
+  dev:
+    image: yearbook-dev
+    container_name: yearbook-dev
+    volumes:
+      # The container installs a linux/musl arm64 tree; the host's editor needs a
+      # darwin-arm64 one. Keep them apart: this named volume holds the container's
+      # node_modules so `pnpm i` below cannot write it back through the /app bind
+      # mount. Run `pnpm install` on the host separately, for the language server.
+      - node_modules:/app/node_modules
+      - ../:/app
+      - ../library/db:/db
+      - ../library/files:/files
+
+    environment:
+      ORIGIN: 'https://yearbook-dev.proute.org'
+      TZ: 'America/New_York'
+      # Point Vite's HMR websocket at the tunnel (443/wss) instead of the page's
+      # empty implicit port. Unset this to develop against localhost:5173 directly.
+      DEV_TUNNEL: '1'
+
+    stop_signal: SIGKILL
+    working_dir: /app
+    command: sh -c "pnpm i && pnpm exec prisma generate && pnpm run dev --host"
+    init: true
+    ports:
+      - 5173:5173
+    tty: true
+    stdin_open: true
+
+volumes:
+  node_modules:
