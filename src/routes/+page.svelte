@@ -33,7 +33,7 @@
   );
 </script>
 
-<svelte:head><title>Yearbooks</title></svelte:head>
+<svelte:head><title>Yearbook</title></svelte:head>
 
 <!-- Sits behind everything, outside the content flow, and never takes a click. Which
      treatment shows is the `years.background` setting, so switching back is one form
