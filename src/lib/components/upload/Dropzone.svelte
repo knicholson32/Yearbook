@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ImagePlus, Loader2, TriangleAlert, Copy } from 'lucide-svelte';
   import { basicPlural } from '$lib/helpers';
+  import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from '$lib/limits';
 
   interface Props {
     year: number;
@@ -113,6 +114,10 @@
           } catch (e) {
             job.error = 'Upload failed (409)';
           }
+        } else if (xhr.status === 413) {
+          // Refused by adapter-node before the app saw it, so there is no JSON to read a
+          // message out of. Say the useful thing ourselves.
+          job.error = `Too large to upload (limit ${MAX_UPLOAD_MB}MB)`;
         } else {
           let message = `Upload failed (${xhr.status})`;
           try {
@@ -150,6 +155,12 @@
     // doesn't start a dozen simultaneous sharp pipelines on the server. Each send is
     // guarded: one photo that blows up must not abandon the ones queued behind it.
     for (let i = 0; i < list.length; i++) {
+      // Checked here as well as on the server: on a phone connection an oversized photo
+      // would otherwise upload for minutes before being turned away.
+      if (list[i].size > MAX_UPLOAD_BYTES) {
+        jobs[i].error = `Too large to upload (${(list[i].size / 1_000_000).toFixed(1)}MB of ${MAX_UPLOAD_MB}MB)`;
+        continue;
+      }
       try {
         await send(list[i], jobs[i]);
       } catch (e) {

@@ -5,9 +5,7 @@ import { uploadImage } from '$lib/server/image';
 import { ensureMonth, isValidMonth, isValidYear } from '$lib/server/month';
 import { findDuplicate } from '$lib/server/image/duplicates';
 import { LOCKED_MESSAGE, isYearLocked } from '$lib/server/yearbook/lock';
-
-/** Matches the `maxMB` the image pipeline enforces. */
-const MAX_MB = 25;
+import { MAX_UPLOAD_MB } from '$lib/limits';
 
 /**
  * Upload one photo into a month.
@@ -79,7 +77,7 @@ export const POST = async ({ request, locals }) => {
     monthId,
     date: fallbackDate,
     sort,
-    maxMB: MAX_MB,
+    maxMB: MAX_UPLOAD_MB,
     checkDuplicate: allowDuplicate
       ? undefined
       : async (hash) => {

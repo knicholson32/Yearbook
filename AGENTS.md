@@ -66,6 +66,30 @@ docker run --rm -p 4173:3000 -v "$PWD/library/db:/db" -v "$PWD/library/files:/fi
 
 Mount copies of `library/` rather than the real thing if the run might write.
 
+## Icons, the manifest, and Access
+
+`src/hooks.server.ts` serves seven paths without resolving a session -- `favicon.ico`, the
+four icon PNGs, `manifest.webmanifest` and `robots.txt`. This is not a convenience:
+
+A phone saving the site to its home screen fetches `apple-touch-icon.png` **outside the
+browsing session**. Behind Cloudflare Access that request comes back as the login page --
+`200 text/html`, not a PNG -- so the fetch fails and iOS draws its own grey letter tile.
+The symptom looks like a broken icon file; the icon is fine.
+
+Both sides have to agree. The app allows these paths, and Access needs a Bypass policy for
+the same list, or the request never reaches the origin. If someone reports a generated
+letter tile instead of the app icon, check this first:
+
+```sh
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' https://<host>/apple-touch-icon.png
+# image/png -> fine.   text/html -> Access is intercepting it.
+```
+
+The About dialog reads `data.build` from `$lib/server/build`, which is computed once at
+startup from `package.json` and the environment variables the Dockerfile stamps in
+(`GIT_COMMIT`, `GIT_REF`, `BUILD_TIMESTAMP`). Running from source those are absent and the
+dialog says "running from source" rather than inventing a version.
+
 ## Driving the UI headlessly
 
 The app has no test runner. To check behaviour end to end, drive Chrome over the DevTools

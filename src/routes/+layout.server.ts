@@ -1,4 +1,5 @@
 import { redirect } from '@sveltejs/kit';
+import { buildInfo } from '$lib/server/build';
 
 export const load = async ({ locals, url }) => {
   const { user, email } = locals;
@@ -7,6 +8,8 @@ export const load = async ({ locals, url }) => {
 
   return {
     user,
-    email
+    email,
+    // Constant for the life of the process; shown in the About dialog.
+    build: buildInfo
   };
 };

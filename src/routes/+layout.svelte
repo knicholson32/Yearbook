@@ -14,7 +14,6 @@
   import { afterNavigate, beforeNavigate } from "$app/navigation";
   import NProgress from 'nprogress';
   import escapeOrClickOutside from "$lib/components/events/escapeOrClickOutside";
-  import type { GitCommit } from "$lib/server/api/git/schema";
   import { timeConverter } from "$lib/helpers";
   import { browser } from "$app/environment";
   import Avatar from "$lib/components/Avatar.svelte";
@@ -75,23 +74,10 @@
 	// Profile Menus
 	// -----------------------------------------------------------------------------------------------
 
-  // const loadCommitInfo = async () => {
-  //   const cData = await (await fetch(`https://api.github.com/repos/knicholson32/Yearbook/commits?per_page=1&sha=${data.lastCommit}`)).json() as GitCommit[];
-  //   if (cData.length > 0) {
-  //     const data = {
-  //       commitMessage: cData[0].commit.message,
-  //       commitDate: new Date(cData[0].commit.author.date),
-  //       commitAuthor: cData[0].commit.author.name,
-  //       commitSHA: cData[0].sha
-  //     }
-  //     return data;
-  //   } else return null
-  // }
-
+  // The commit shown in the About dialog comes from `data.build`, stamped into the image at
+  // build time -- no call to the GitHub API, which would fail on a private network anyway.
   let aboutOverlay = $state(false);
-  // let commitInfo: Awaited<ReturnType<typeof loadCommitInfo>> | null = $state(null);
-  const openAboutOverlay = async () => {
-    // commitInfo = await loadCommitInfo();
+  const openAboutOverlay = () => {
     aboutOverlay = true;
   }
   const hideAboutOverlay = () => {
@@ -203,8 +189,6 @@
           <div class="flex shrink-0 items-center">
             <a href="/">
               <span class="font-merienda font-bold text-xl">Yearbook</span>
-              <!-- <img class="block w-9 h-auto lg:hidden" src="/logo-inverted.png" alt="Yearbook">
-              <img class="hidden w-9 h-auto lg:block" src="/logo-inverted.png" alt="Yearbook"> -->
             </a>
           </div>
 
@@ -399,93 +383,119 @@
 
 
   {#if aboutOverlay}
-    <div use:escapeOrClickOutside={{except: undefined, callback: hideAboutOverlay}} in:fade={{ duration: 200, easing: cubicOut }} out:fade={{ duration: 75, easing: cubicIn }} class="fixed z-50 top-0 right-0 bottom-0 left-0 flex flex-col items-center transition-colors justify-center bg-black/30">
-      <div class="relative">
-      
-        <!--
-          Flyout menu, show/hide based on flyout menu state.
-      
-          Entering: "transition ease-out duration-200"
-            From: "opacity-0 translate-y-1"
-            To: "opacity-100 translate-y-0"
-          Leaving: "transition ease-in duration-150"
-            From: "opacity-100 translate-y-0"
-            To: "opacity-0 translate-y-1"
-        -->
-        <div class="z-10 flex w-screen max-w-max px-4" >
-          <div class="relative w-screen max-w-md flex-auto overflow-hidden rounded-3xl bg-white text-sm/6 shadow-lg ring-1 ring-gray-900/5">
-            <div class="p-4 relative overflow-hidden">
-              <img class="absolute top-0 right-0 bottom-0 left-0 opacity-15" src="/contour.svg" alt="">
-              <div class="mb-2 flex flex-row gap-2">
-                <img class="block h-8" src="/logo-inverted.png" alt="Yearbook">
-                <span class="font-semibold text-gray-900 text-2xl">Yearbook</span>
-                <button onclick={hideAboutOverlay} class="z-50 absolute top-4 right-4 text-gray-900 hover:text-sky-500 cursor-pointer"><X class="w-6 h-6"></X></button>
-              </div>
-              <div class="group relative flex gap-x-6 rounded-lg p-4 hover:bg-gray-50">
-                <div class="mt-1 flex size-11 flex-none items-center justify-center rounded-lg bg-gray-50">
-                  <img class="h-7 my-0 aspect-square" src='/Github-Light.svg' alt="GitHub Logo"/>
-                </div>
-                <div>
-                  <a target="_blank" href="https://github.com/knicholson32/Yearbook" class="font-semibold text-gray-900 group-hover:text-sky-700">
-                    GitHub
-                    <span class="absolute inset-0"></span>
-                  </a>
-                  <p class="mt-1 text-gray-600">View source code and report bugs</p>
-                </div>
-              </div>
-            </div>
-            <div class="bg-gray-50 p-8">
-              <div class="flex justify-between">
-                <h3 class="text-sm/6 font-semibold text-gray-500">Version & Build Information</h3>
-                <a onclick={hideAboutOverlay} href="/settings" class="text-sm/6 font-semibold text-sky-600">Settings <span aria-hidden="true">&rarr;</span></a>
-              </div>
-              <!-- <ul role="list" class="mt-6 space-y-6">
-                <li class="relative text-gray-800">
-                  <div class="flex flex-row justify-between text-xs/6 text-gray-600">
-                    <span>Runtime Versions</span>
-                    {#if data.buildTime !== null && data.buildTime !== undefined && data.buildTime !== '' && data.buildTime !== 0}
-                      <span>built on <time datetime={new Date(data.buildTime * 1000).toISOString()} class="">{timeConverter(data.buildTime, {dateOnly: true})}</time></span>
-                    {/if}
-                  </div>
-                  <div class="grid grid-cols-3 gap-x-4">
-                    <div class="grow text-right">Parent Image</div>
-                    <a href="https://hub.docker.com/_/node" target="_blank" class="hover:underline grow text-left col-span-2"><code class="bg-gray-100 p-1 rounded-md">{data.parentImage}</code></a>
-                    
-                    <a href="https://nodejs.org/" target="_blank" class="hover:underline grow text-right">Node</a>
-                    <a href="https://nodejs.org/docs/v{data.nodeVersion}/api/" target="_blank" class="hover:underline grow text-left col-span-2"><code class="bg-gray-100 p-1 rounded-md">{data.nodeVersion}</code></a>
+    <!-- About. Deliberately small: what this is, where the source lives, and exactly which
+         build you are looking at -- the last of which is the only thing here that is hard to
+         find out any other way when something misbehaves. -->
+    <div
+      use:escapeOrClickOutside={{ except: undefined, callback: hideAboutOverlay }}
+      in:fade={{ duration: 200, easing: cubicOut }}
+      out:fade={{ duration: 75, easing: cubicIn }}
+      class="fixed z-50 top-0 right-0 bottom-0 left-0 flex flex-col items-center justify-center bg-black/40 p-4"
+    >
+      <div
+        class="relative w-full max-w-md overflow-hidden rounded-3xl bg-white text-sm/6 shadow-lg ring-1 ring-gray-900/5 dark:bg-zinc-900 dark:ring-white/10"
+        data-testid="about-dialog"
+      >
+        <button
+          onclick={hideAboutOverlay}
+          aria-label="Close"
+          class="absolute top-4 right-4 z-50 cursor-pointer text-gray-500 hover:text-sky-500 dark:text-gray-400"
+        >
+          <X class="size-5" />
+        </button>
 
-                    <a href="https://svelte.dev/" target="_blank" class="hover:underline grow text-right">Svelte</a>
-                    <div class="grow text-left col-span-2"><code class="bg-gray-100 p-1 rounded-md">{data.svelteVersion}</code></div>
-
-                    <a href="https://www.prisma.io/" target="_blank" class="hover:underline grow text-right">Prisma</a>
-                    <div class="grow text-left col-span-2"><code class="bg-gray-100 p-1 rounded-md">{data.prismaVersion}</code></div>
-
-                    <a href="https://pptr.dev/" target="_blank" class="hover:underline grow text-right">Puppeteer</a>
-                    <div class="grow text-left col-span-2"><code class="bg-gray-100 p-1 rounded-md">{data.puppeteerVersion}</code></div>
-
-                    <a href="https://www.chromium.org/" target="_blank" class="hover:underline grow text-right">Chromium</a>
-                    <div class="grow text-left col-span-2"><code class="bg-gray-100 p-1 rounded-md">{data.chromiumVersion}</code></div>
-
-                  </div>
-                </li>
-                {#if commitInfo !== null}
-                  <li class="relative">
-                    <span class="block text-xs/6 text-gray-600">
-                      Last Commit on 
-                      <time datetime={commitInfo.commitDate.toISOString()} class="text-xs/6 text-gray-600">{timeConverter(commitInfo.commitDate.getTime()/1000, {dateOnly: true})}</time>
-                    </span>
-                    <a href="https://github.com/knicholson32/Contour/commit/{commitInfo.commitSHA}" target="_blank" class="hover:underline block truncate text-sm/6 font-semibold text-gray-900">
-                      <code class="bg-gray-100 p-1 rounded-md font-light">@{commitInfo.commitSHA.substring(0, 7)}</code> {commitInfo.commitMessage}
-                      <span class="absolute inset-0"></span>
-                    </a>
-                  </li>
-                {/if}
-              </ul> -->
+        <div class="p-6">
+          <div class="flex items-center gap-3">
+            <!-- The app's own icon, rather than a logo file: one asset, already shipped. -->
+            <!-- The icon is white-on-white in light mode, so it needs an edge to read as a tile. -->
+            <img
+              src="/icon-192.png"
+              alt=""
+              width="36"
+              height="36"
+              class="size-9 rounded-lg ring-1 ring-gray-900/10 dark:ring-0"
+            />
+            <div>
+              <p class="font-merienda text-xl font-bold text-gray-900 dark:text-white">Yearbook</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                {data.build.packages.svelte === null ? 'A family photo yearbook' : "The family's photographs, a year at a time."}
+              </p>
             </div>
           </div>
+
+          <a
+            target="_blank"
+            rel="noreferrer"
+            href="https://github.com/knicholson32/Yearbook"
+            class="group mt-5 flex items-center gap-x-4 rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-white/5"
+          >
+            <div class="flex size-10 flex-none items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10">
+              <!-- Inline: lucide dropped its brand icons, so there is no GitHub mark to import. -->
+              <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" class="size-5 text-gray-700 dark:text-gray-200">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-gray-900 group-hover:text-sky-700 dark:text-white dark:group-hover:text-sky-400">
+                GitHub
+              </p>
+              <p class="text-gray-600 dark:text-gray-400">View the source and report bugs</p>
+            </div>
+          </a>
+        </div>
+
+        <div class="bg-gray-50 p-6 dark:bg-white/5">
+          <div class="flex items-baseline justify-between">
+            <h3 class="text-sm/6 font-semibold text-gray-500 dark:text-gray-400">This build</h3>
+            {#if data.build.builtAt !== null}
+              <time
+                datetime={new Date(data.build.builtAt * 1000).toISOString()}
+                class="text-xs text-gray-500 dark:text-gray-400"
+              >
+                built {timeConverter(data.build.builtAt, { dateOnly: true })}
+              </time>
+            {:else}
+              <span class="text-xs text-gray-500 dark:text-gray-400">running from source</span>
+            {/if}
+          </div>
+
+          {#if data.build.commit !== null}
+            <a
+              href="https://github.com/knicholson32/Yearbook/commit/{data.build.commit}"
+              target="_blank"
+              rel="noreferrer"
+              class="mt-3 flex items-center gap-1.5 text-sm font-semibold text-gray-900 hover:underline dark:text-white"
+              data-testid="about-commit"
+            >
+              <GitCommitVertical class="size-4 shrink-0 text-gray-400" />
+              <code class="rounded-md bg-gray-100 px-1.5 py-0.5 font-light dark:bg-white/10">
+                {data.build.commit.substring(0, 7)}
+              </code>
+              {#if data.build.ref !== null}
+                <span class="truncate text-gray-500 dark:text-gray-400">on {data.build.ref}</span>
+              {/if}
+            </a>
+          {/if}
+
+          <dl class="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs" data-testid="about-versions">
+            {#each [
+              ['Node', data.build.node],
+              ['Svelte', data.build.packages.svelte],
+              ['SvelteKit', data.build.packages.kit],
+              ['Tailwind', data.build.packages.tailwind],
+              ['Prisma', data.build.packages.prisma],
+              ['sharp', data.build.packages.sharp]
+            ] as [name, value] (name)}
+              {#if value !== null}
+                <dt class="text-right text-gray-500 dark:text-gray-400">{name}</dt>
+                <dd class="text-gray-900 dark:text-gray-200">
+                  <code class="rounded-md bg-gray-100 px-1.5 py-0.5 dark:bg-white/10">{value}</code>
+                </dd>
+              {/if}
+            {/each}
+          </dl>
         </div>
       </div>
-      
     </div>
   {/if}
 {/if}

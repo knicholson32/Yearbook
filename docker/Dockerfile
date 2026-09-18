@@ -97,8 +97,12 @@ ENV DATABASE_URL="file:/db/yearbook.db"
 # mount ../library/files here; override FILES_FOLDER to put it elsewhere.
 ENV FILES_FOLDER="/files"
 ENV ORIGIN="http://localhost:${SERVER_PORT}"
-# 11MB Max body size (for image uploads)
-ENV BODY_SIZE_LIMIT=11000000
+# Largest request body adapter-node will accept. This is a backstop and must stay ABOVE the
+# app's own per-photo limit (MAX_UPLOAD_MB in src/lib/limits.ts, currently 25MB) plus a
+# little multipart overhead. It used to be 11MB -- below the app's limit -- so every photo
+# between the two was rejected here, before any of our code ran, with a bare 413 that the
+# uploader could only report as "Upload failed (413)". Raise MAX_UPLOAD_MB first, then this.
+ENV BODY_SIZE_LIMIT=32000000
 ENV PROC_SHELL='/bin/sh'
 # Marks this as the shipped image. `$lib/server/auth` refuses to fall back to trusting the
 # `cf-access-authenticated-user-email` header when it is set, so a tunnel pointed at a

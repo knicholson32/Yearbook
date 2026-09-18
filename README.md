@@ -49,7 +49,7 @@ Migrations run at start; the database is created on first boot.
 | `TZ` | no | Container timezone; affects how photo dates are read. |
 | `CF_ACCESS_TEAM_DOMAIN` | no | Access team domain to verify tokens against. |
 | `CF_ACCESS_AUD` | no | Access application audience tag. |
-| `BODY_SIZE_LIMIT` | no | Upload ceiling, default 11 MB. |
+| `BODY_SIZE_LIMIT` | no | Largest request body, default 32 MB. Keep it above the 25 MB per-photo limit. |
 | `FILES_FOLDER` | no | Where photos are written, default `/files`. |
 
 ### Authentication
@@ -70,6 +70,22 @@ granted and revoked from the dashboard. The last one cannot be removed.
 
 > **Put Access in front of it.** The container must not be reachable directly from the
 > internet. Its whole notion of who you are comes from the tunnel.
+
+#### Let the icons through
+
+Add a **Bypass** policy in Cloudflare Access for these paths, or leave them out of the
+protected application:
+
+```
+/favicon.ico   /apple-touch-icon.png   /icon-192.png
+/icon-512.png  /icon-maskable.png      /manifest.webmanifest   /robots.txt
+```
+
+A device saving the site to its home screen fetches the touch icon and the manifest outside
+the browsing session, so Access answers with its login page instead of an image. The fetch
+fails silently and the phone draws its own grey letter tile instead of the app icon. The
+server already serves these seven paths without an identity; Access has to agree. Nothing in
+them is private.
 
 ## Developing
 
