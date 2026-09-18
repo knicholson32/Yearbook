@@ -77,8 +77,9 @@ Add a **Bypass** policy in Cloudflare Access for these paths, or leave them out 
 protected application:
 
 ```
-/favicon.ico   /apple-touch-icon.png   /icon-192.png
-/icon-512.png  /icon-maskable.png      /manifest.webmanifest   /robots.txt
+/favicon.ico   /apple-touch-icon.png   /icon-192.png   /icon-512.png
+/icon-maskable.png   /manifest.webmanifest   /robots.txt
+/screenshot-wide.png   /screenshot-narrow.png
 ```
 
 A device saving the site to its home screen fetches the touch icon and the manifest outside

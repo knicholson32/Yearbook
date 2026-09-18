@@ -99,6 +99,19 @@ curl -s -o /dev/null -w '%{http_code} %{content_type}\n' https://<host>/apple-to
 # image/png -> fine.   text/html -> Access is intercepting it.
 ```
 
+### Store screenshots
+
+`manifest.webmanifest` declares two, and Chrome needs both or it withholds the richer
+install dialog: one with `form_factor: "wide"` (desktop) and one without it or set to
+something else (mobile). Keep each between 320 and 3840px with a ratio no worse than 2.3:1 --
+`screenshot-wide.png` is 1280x800 and `screenshot-narrow.png` is 780x1688.
+
+They are captured from the running app at those viewports, but **every photograph is
+replaced with a generated gradient before the capture**. This repository and the published
+image are both public; a store screenshot is there to show the layout, not the family in it.
+Re-shoot them the same way when the UI changes, and check `document.querySelectorAll('img')`
+for any surviving `/api/image/` source before saving.
+
 The About dialog reads `data.build` from `$lib/server/build`, which is computed once at
 startup from `package.json` and the environment variables the Dockerfile stamps in
 (`GIT_COMMIT`, `GIT_REF`, `BUILD_TIMESTAMP`). Running from source those are absent and the

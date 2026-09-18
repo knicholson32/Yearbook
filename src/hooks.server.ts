@@ -19,6 +19,9 @@ const PUBLIC_FILES = new Set([
   '/icon-512.png',
   '/icon-maskable.png',
   '/manifest.webmanifest',
+  // Chrome fetches these for the richer install dialog, the same way it fetches the icons.
+  '/screenshot-wide.png',
+  '/screenshot-narrow.png',
   '/robots.txt'
 ]);
 
