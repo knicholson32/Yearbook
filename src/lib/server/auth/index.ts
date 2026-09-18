@@ -4,6 +4,7 @@ import jwksClient from 'jwks-rsa';
 import { prisma } from '$lib/server/db';
 import { env } from '$env/dynamic/private';
 import { error } from '@sveltejs/kit';
+import { building } from '$app/environment';
 import type { RequestEvent } from '@sveltejs/kit';
 
 // Which Cloudflare Access application to trust. These are per-deployment: a second
@@ -15,7 +16,10 @@ const CERTS_URL = `${TEAM_DOMAIN}/cdn-cgi/access/certs`;
 const APPLICATION_AUDIENCE =
   env.CF_ACCESS_AUD ?? 'UNSET'
 
-if (TEAM_DOMAIN === 'UNSET') {
+// Skipped while building: SvelteKit imports server modules to analyse the routes, and the
+// build (CI included) has no Access settings -- they arrive as container environment
+// variables at run time.
+if (!building && TEAM_DOMAIN === 'UNSET') {
   throw new Error('Unset tokens. Set "CF_ACCESS_AUD" and "CF_ACCESS_TEAM_DOMAIN" environmental variables.');
 }
 
