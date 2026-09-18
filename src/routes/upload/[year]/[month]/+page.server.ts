@@ -4,7 +4,7 @@ import { UPLOADER_SELECT, canManageImage, visibleImagesWhere } from '$lib/server
 import { photoActions } from '$lib/server/image/photoActions';
 import { ensureMonth, parseYearMonth } from '$lib/server/month';
 import * as settings from '$lib/server/settings';
-import { LOCKED_MESSAGE, isYearLocked, lockedYears } from '$lib/server/yearbook/lock';
+import { LOCKED_MESSAGE, isYearLocked, lockedYears, yearLockReason } from '$lib/server/yearbook/lock';
 
 export const load = async ({ params, locals }) => {
   const parsed = parseYearMonth(params.year, params.month);
@@ -32,7 +32,9 @@ export const load = async ({ params, locals }) => {
         });
 
   const columns = await settings.get('upload.monthColumns');
-  const locked = await isYearLocked(year);
+  const photosPerMonth = await settings.get('upload.photosPerMonth');
+  const lockReason = await yearLockReason(year);
+  const locked = lockReason !== null;
 
   const [people, families] = await Promise.all([
     // Everyone, deliberately unscoped. Groups mix at the events these photos come from, so
@@ -55,7 +57,9 @@ export const load = async ({ params, locals }) => {
     year,
     month,
     columns,
+    photosPerMonth,
     locked,
+    lockReason,
     caption: monthCaption?.text ?? '',
     captionUpdatedAt: monthCaption?.updatedAt.getTime() ?? null,
     captionUpdatedBy: monthCaption?.updatedBy ?? null,

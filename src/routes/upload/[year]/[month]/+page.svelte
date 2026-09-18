@@ -5,7 +5,7 @@
   import { monthsFull, basicPlural, joinWithLimit } from '$lib/helpers';
   import Dropzone from '$lib/components/upload/Dropzone.svelte';
   import PhotoDialog from '$lib/components/upload/PhotoDialog.svelte';
-  import { ArrowLeft, CalendarClock, ChevronLeft, ChevronRight, MessageSquareText, Users, Lock } from 'lucide-svelte';
+  import { ArrowLeft, CalendarClock, ChevronLeft, ChevronRight, MessageSquareText, Users, Lock, CircleCheck } from 'lucide-svelte';
 
   interface Props {
     data: import('./$types').PageData;
@@ -170,14 +170,34 @@
     >
       <Lock class="size-4 shrink-0" />
       <span>
-        The {data.year} yearbook is published, so this month can't be changed. An admin can
-        unpublish it to reopen editing.
+        {#if data.lockReason === 'published'}
+          The {data.year} yearbook is published, so this month can't be changed. An admin can
+          unpublish it to reopen editing.
+        {:else}
+          {data.year}'s photos are locked while the yearbook is put together, so this month
+          can't be changed. An admin can unlock it to reopen editing.
+        {/if}
       </span>
     </p>
   {:else}
     <div class="mt-6">
       <Dropzone year={data.year} month={data.month} onuploaded={() => invalidateAll()} />
     </div>
+  {/if}
+
+  {#if data.images.length >= data.photosPerMonth}
+    <!-- The same target that turns this month's card green on the overview. Counts only this
+         group's photos, like everything else on the page. -->
+    <p
+      class="mt-4 flex flex-wrap items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900 outline outline-emerald-600/20 dark:bg-emerald-400/10 dark:text-emerald-200 dark:outline-emerald-400/20"
+      data-testid="month-done-notice"
+    >
+      <CircleCheck class="size-4 shrink-0" />
+      <span>
+        {title} is done: your group has {data.images.length}
+        {basicPlural('photo', data.images.length)}, and the goal is {data.photosPerMonth}.
+      </span>
+    </p>
   {/if}
 
   {#if data.images.length === 0}

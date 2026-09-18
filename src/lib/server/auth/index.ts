@@ -10,10 +10,14 @@ import type { RequestEvent } from '@sveltejs/kit';
 // hostname is usually a second Access application with its own audience tag, and a token
 // minted for one is rejected by the other. Overridable so the same image can be pointed at
 // a different tunnel without a rebuild; the defaults are the existing dev application.
-const TEAM_DOMAIN = env.CF_ACCESS_TEAM_DOMAIN ?? 'https://eroute.cloudflareaccess.com';
+const TEAM_DOMAIN = env.CF_ACCESS_TEAM_DOMAIN ?? 'UNSET';
 const CERTS_URL = `${TEAM_DOMAIN}/cdn-cgi/access/certs`;
 const APPLICATION_AUDIENCE =
-  env.CF_ACCESS_AUD ?? '0efa1a512f491d5d3a16e844c6428cd336ff5639516f2c0c71b73f346a024d4c';
+  env.CF_ACCESS_AUD ?? 'UNSET'
+
+if (TEAM_DOMAIN === 'UNSET') {
+  throw new Error('Unset tokens. Set "CF_ACCESS_AUD" and "CF_ACCESS_TEAM_DOMAIN" environmental variables.');
+}
 
 // 2. Initialize the JWKS client to pull public certificates dynamically
 const client = jwksClient({
@@ -47,6 +51,10 @@ export const validateCloudflareJWT = (token: string): Promise<JwtPayload> => {
   return new Promise((resolve, reject) => {
     if (!token) {
       return reject(new Error('Missing token'));
+    }
+
+    if (env.DEV_TUNNEL !== '1' && (APPLICATION_AUDIENCE === 'UNSET' || TEAM_DOMAIN === 'UNSET')) {
+      return reject(new Error('Unset tokens. Set "CF_ACCESS_AUD" and "CF_ACCESS_TEAM_DOMAIN" environmental variables.'))
     }
 
     const options: VerifyOptions = {

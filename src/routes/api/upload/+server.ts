@@ -42,7 +42,7 @@ export const POST = async ({ request, locals }) => {
     return APIResponse._400({ message: `${file.name} is not an image` });
   }
 
-  // Checked before any work is done: a published year is frozen, so there is no point
+  // Checked before any work is done: a published or locked year is frozen, so there is no point
   // decoding a 10MB HEIC only to refuse it.
   if (await isYearLocked(year)) {
     return json({ status: 423, ok: false, message: LOCKED_MESSAGE }, { status: 423 });

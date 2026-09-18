@@ -30,7 +30,7 @@ export const load = async ({ locals, url }) => {
 
   const yearRow = await prisma.year.findUnique({
     where: { id: year },
-    select: { published: true, publishedAt: true, title: true, photobookUrl: true }
+    select: { published: true, publishedAt: true, locked: true, title: true, photobookUrl: true }
   });
 
   const [total, people, groups, pending] = await Promise.all([
@@ -46,6 +46,7 @@ export const load = async ({ locals, url }) => {
     years,
     published: yearRow?.published ?? false,
     publishedAt: yearRow?.publishedAt?.getTime() ?? null,
+    locked: yearRow?.locked ?? false,
     yearTitle: yearRow?.title ?? '',
     photobookUrl: yearRow?.photobookUrl ?? '',
     total,
@@ -57,14 +58,6 @@ export const load = async ({ locals, url }) => {
 };
 
 export const actions = {
-  /**
-   * Put a year on the shelf, or take it off again.
-   *
-   * Publishing is only a visibility switch: the year stays editable afterwards, and every
-   * upload and admin page behaves exactly as before. Unpublishing simply removes it from
-   * the Years tab -- nothing is deleted and `publishedAt` is kept, so a year that goes back
-   * up keeps the date it first appeared.
-   */
   /**
    * The link to a printed photo book of this year.
    *
@@ -107,6 +100,41 @@ export const actions = {
     return { message: 'Saved' };
   },
 
+  /**
+   * Freeze a year's photos without publishing it, or reopen them.
+   *
+   * Gives the admin a stable set to build the printed book from while the yearbook is still
+   * off the shelf. Independent of publishing -- see `$lib/server/yearbook/lock` -- so a year
+   * that is locked and then published and unpublished stays locked.
+   *
+   * Upserted rather than refused when the row is missing: locking a year before anyone has
+   * uploaded to it is odd, but harmless, and the row is what every lock check reads.
+   */
+  setLocked: async ({ request, locals }) => {
+    const data = await request.formData();
+    requireAdmin(locals.user);
+
+    const year = Number(data.get('year'));
+    if (!Number.isInteger(year)) return fail(400, { message: 'Bad year' });
+
+    const locked = data.get('locked') === 'true';
+
+    await prisma.year.upsert({
+      where: { id: year },
+      update: { locked },
+      create: { id: year, locked }
+    });
+
+    return { success: true, locked };
+  },
+
+  /**
+   * Put a year on the shelf, or take it off again.
+   *
+   * Publishing also freezes the year's photos. Unpublishing removes it from the Years tab
+   * and reopens editing (unless it is separately locked) -- nothing is deleted and
+   * `publishedAt` is kept, so a year that goes back up keeps the date it first appeared.
+   */
   setPublished: async ({ request, locals }) => {
     const data = await request.formData();
     requireAdmin(locals.user);

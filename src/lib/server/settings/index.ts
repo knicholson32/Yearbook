@@ -10,6 +10,7 @@ export const TypeNames = {
 	'general.encKey': 'UNSET',
 	'general.familyName': '',
 	'upload.monthColumns': 3,
+	'upload.photosPerMonth': 4,
 	'years.background': 'plain',
 };
 
@@ -21,12 +22,17 @@ export type YearsBackground = (typeof YEARS_BACKGROUNDS)[number];
 export const MONTH_COLUMNS_MIN = 1;
 export const MONTH_COLUMNS_MAX = 8;
 
+/** Clamp for `upload.photosPerMonth`, the number of photos each group is asked for per month. */
+export const PHOTOS_PER_MONTH_MIN = 1;
+export const PHOTOS_PER_MONTH_MAX = 100;
+
 export type TypeName = keyof typeof TypeNames;
 
 export type ObjectType<T extends TypeName> = 
 	T extends 'general.timezone' ? string : 			// String
 	T extends 'general.encKey' ? string : 				// String
 	T extends 'upload.monthColumns' ? number : 			// Integer
+	T extends 'upload.photosPerMonth' ? number : 		// Integer
 	T extends 'general.familyName' ? string : 			// String
 	T extends 'years.background' ? YearsBackground : 	// Enum
 	string;
@@ -69,6 +75,11 @@ export const get = async <T extends TypeName>(setting: T, settingVal?: SettingPa
 				const parsed = parseInt(settingVal.value);
 				if (!Number.isFinite(parsed)) return TypeNames['upload.monthColumns'] as ObjectType<T>;
 				return Math.min(MONTH_COLUMNS_MAX, Math.max(MONTH_COLUMNS_MIN, parsed)) as ObjectType<T>;
+			}
+			case 'upload.photosPerMonth': {
+				const parsed = parseInt(settingVal.value);
+				if (!Number.isFinite(parsed)) return TypeNames['upload.photosPerMonth'] as ObjectType<T>;
+				return Math.min(PHOTOS_PER_MONTH_MAX, Math.max(PHOTOS_PER_MONTH_MIN, parsed)) as ObjectType<T>;
 			}
 
 			// Float Conversion --------------------------------------------------------------------------

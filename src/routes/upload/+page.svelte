@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { months as monthNames } from '$lib/helpers';
   import { basicPlural } from '$lib/helpers';
-  import { ChevronLeft, ChevronRight, ImagePlus, Inbox } from 'lucide-svelte';
+  import { Check, ChevronLeft, ChevronRight, ImagePlus, Inbox, Lock } from 'lucide-svelte';
   import { invalidateAll } from '$app/navigation';
   import Dropzone from '$lib/components/upload/Dropzone.svelte';
   import Avatar from '$lib/components/Avatar.svelte';
@@ -30,6 +30,7 @@
       <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Photos</h1>
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
         {data.total} {basicPlural('photo', data.total)} in {data.year}
+        &middot; aim for {data.photosPerMonth} a month
       </p>
     </div>
 
@@ -69,18 +70,38 @@
 
   <!-- Drop a whole year's worth here: each photo goes to the month it was taken in, and
        anything that cannot be placed waits in Pending below. -->
-  <div class="mt-6">
-    <Dropzone year={data.year} onuploaded={() => invalidateAll()} />
-  </div>
+  {#if data.lockReason !== null}
+    <p
+      class="mt-6 flex flex-wrap items-center gap-2 rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900 outline outline-sky-600/20 dark:bg-sky-400/10 dark:text-sky-200 dark:outline-sky-400/20"
+      data-testid="locked-notice"
+    >
+      <Lock class="size-4 shrink-0" />
+      <span>
+        {#if data.lockReason === 'published'}
+          The {data.year} yearbook is published, so its photos can't be changed.
+        {:else}
+          {data.year}'s photos are locked while the yearbook is put together.
+        {/if}
+      </span>
+    </p>
+  {:else}
+    <div class="mt-6">
+      <Dropzone year={data.year} onuploaded={() => invalidateAll()} />
+    </div>
+  {/if}
 
   <!-- Month grid -->
   <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
     {#each data.months as month (month.month)}
+      {@const done = month.count >= data.photosPerMonth}
       <a
         href="/upload/{data.year}/{month.month}"
         data-testid="month-card"
         data-month={month.month}
-        class="group relative flex aspect-4/3 flex-col justify-end overflow-hidden rounded-xl bg-gray-100 p-3 outline outline-gray-200 transition hover:outline-2 hover:outline-indigo-500 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:bg-white/5 dark:outline-white/10"
+        data-done={done}
+        class="group relative flex aspect-4/3 flex-col justify-end overflow-hidden rounded-xl bg-gray-100 p-3 outline transition hover:outline-2 hover:outline-indigo-500 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:bg-white/5 {done
+          ? 'outline-2 outline-emerald-500 dark:outline-emerald-400'
+          : 'outline-gray-200 dark:outline-white/10'}"
         style={month.coverHex === null ? undefined : `background-color: ${month.coverHex}`}
       >
         {#if month.covers.length > 0}
@@ -105,6 +126,17 @@
             {/each}
           </div>
           <div class="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent"></div>
+        {/if}
+
+        {#if done}
+          <span
+            class="absolute top-2 right-2 flex size-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm ring-2 ring-white/80 dark:bg-emerald-400 dark:text-gray-900 dark:ring-gray-900/60"
+            title="{data.photosPerMonth} or more photos: this month is done"
+            data-testid="month-done"
+          >
+            <Check class="size-3.5" strokeWidth={3} />
+            <span class="sr-only">Done</span>
+          </span>
         {/if}
 
         <div class="relative">

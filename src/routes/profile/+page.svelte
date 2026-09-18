@@ -321,6 +321,38 @@
 
         <Button type="submit" data-testid="save-family-name">Save</Button>
       </form>
+
+      <!-- Admins only: the target every group is working towards. -->
+      <form
+        method="POST"
+        action="?/setPhotosPerMonth"
+        use:enhance={() => async ({ update }) => await update({ reset: false })}
+        class="flex flex-wrap items-end gap-4 border-b border-gray-900/10 px-4 py-4 sm:px-8 dark:border-white/10"
+      >
+        <div class="grow">
+          <label for="photos-per-month" class="block text-sm font-medium text-gray-900 dark:text-white">
+            Photos per month
+          </label>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            How many photos each group should add to every month. A month turns green once a
+            group has that many.
+          </p>
+        </div>
+
+        <input
+          id="photos-per-month"
+          data-testid="photos-per-month"
+          name="photosPerMonth"
+          type="number"
+          min="1"
+          max={data.photosPerMonthMax}
+          step="1"
+          value={data.photosPerMonth}
+          class="w-20 rounded-md bg-white px-3 py-1.5 text-sm text-gray-900 outline outline-gray-300 focus:outline-2 focus:outline-sky-500 dark:bg-white/5 dark:text-white dark:outline-white/10"
+        />
+
+        <Button type="submit" data-testid="save-photos-per-month">Save</Button>
+      </form>
     {/if}
     <form
       method="POST"

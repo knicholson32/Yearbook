@@ -158,9 +158,12 @@ many of the same thing — `[data-person="<id>"]`, `[data-photo="<id>"]`, `[data
 | `dropzone` | Dropzone | The drop target region |
 | `dropzone-input` | Dropzone | Hidden file input — use `DOM.setFileInputFiles` on this |
 | `dropzone-browse` | Dropzone | "browse" link that opens the picker |
-| `month-card` | `/upload` | A month tile; also `[data-month]` |
+| `month-card` | `/upload` | A month tile; also `[data-month]`, and `[data-done="true"]` once the group has hit the photos-per-month target |
+| `month-done` | `/upload` | The check mark on a finished month |
+| `locked-notice` | `/upload`, month pages | Why a published or locked year can't be changed |
 | `pending-card` | `/upload` | Link to the pending queue (only when non-empty) |
 | `year-select` | `/upload` | Year dropdown |
+| `month-done-notice` | `/upload/[year]/[month]` | Shown once the group has hit the photos-per-month target |
 | `month-caption` | `/upload/[year]/[month]` | The group's note textarea; saves on blur |
 | `month-caption-form` | `/upload/[year]/[month]` | Its form |
 | `month-caption-save` | `/upload/[year]/[month]` | Visually hidden submit, for keyboard save |
@@ -180,6 +183,8 @@ many of the same thing — `[data-person="<id>"]`, `[data-photo="<id>"]`, `[data
 | `assign-month` / `assign-year` | pending | Destination inputs |
 | `assign-submit` | pending | File that one photo |
 | `assign-all` | pending | File everything by capture date |
+| `photos-per-month` / `save-photos-per-month` | `/profile` | Admin-only target per group per month (default 4) |
+| `lock-panel` / `toggle-locked` | `/admin` | Lock or unlock a year's photos without publishing |
 | `person-row` | `/profile` | A group member; also `[data-person]` |
 | `person-photo-button` | `/profile` | Add/change that person's picture |
 | `person-reframe` | `/profile` | Open the cropper for that person |

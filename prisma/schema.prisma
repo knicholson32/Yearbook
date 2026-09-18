@@ -112,9 +112,14 @@ model Year {
 
   /// Published to the Years tab, where every group sees the finished yearbook.
   ///
-  /// Purely a visibility switch: a published year stays fully editable, and unpublishing
-  /// simply takes it off the shelf again. Only an admin can set it.
+  /// Also freezes the year's photos (see `$lib/server/yearbook/lock`); unpublishing takes it
+  /// off the shelf and reopens editing, unless `locked` is also set. Only an admin can set it.
   published Boolean @default(false)
+
+  /// Photos frozen without publishing, so the admin can build the printed book from a set
+  /// that will not change underneath them. Independent of `published`: unpublishing a year
+  /// that is also locked leaves it locked. Only an admin can set it.
+  locked Boolean @default(false)
 
   /// When it was first published, so the shelf can order by it and say "published in March".
   publishedAt DateTime?

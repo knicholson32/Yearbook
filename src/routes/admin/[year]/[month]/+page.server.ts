@@ -5,7 +5,7 @@ import { peopleCounts } from '$lib/server/export/stats';
 import { familyLabel } from '$lib/server/export/naming';
 import { photoActions } from '$lib/server/image/photoActions';
 import { prisma } from '$lib/server/db';
-import { isYearLocked } from '$lib/server/yearbook/lock';
+import { yearLockReason } from '$lib/server/yearbook/lock';
 
 export const load = async ({ params, locals }) => {
   const user = requireAdmin(locals.user);
@@ -14,8 +14,10 @@ export const load = async ({ params, locals }) => {
   if (parsed === null) error(404, 'No such month');
   const { year, month } = parsed;
 
-  // Published years are frozen for admins too; unpublishing is the way back in.
-  const locked = await isYearLocked(year);
+  // Published and locked years are frozen for admins too; unpublishing or unlocking is the
+  // way back in.
+  const lockReason = await yearLockReason(year);
+  const locked = lockReason !== null;
 
   // Unscoped on purpose: this is the view that exists to see across every family. The
   // group's own month page still uses `visibleImagesWhere` and shows only their photos.
@@ -206,6 +208,7 @@ export const load = async ({ params, locals }) => {
     year,
     month,
     locked,
+    lockReason,
     total: images.length,
     hdrCount: images.filter((image) => image.isHDR).length,
     // Already carries each person's picture.

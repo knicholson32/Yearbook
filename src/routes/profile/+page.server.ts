@@ -61,6 +61,7 @@ export const load = async ({ locals }) => {
       }));
 
   const monthColumns = await settings.get('upload.monthColumns');
+  const photosPerMonth = await settings.get('upload.photosPerMonth');
   const yearsBackground = await settings.get('years.background');
   const familyName = await settings.get('general.familyName');
 
@@ -97,6 +98,8 @@ export const load = async ({ locals }) => {
     group,
     monthColumns,
     monthColumnsMax: settings.MONTH_COLUMNS_MAX,
+    photosPerMonth,
+    photosPerMonthMax: settings.PHOTOS_PER_MONTH_MAX,
     yearsBackground,
     yearsBackgrounds: settings.YEARS_BACKGROUNDS,
     familyName,
@@ -133,6 +136,25 @@ export const actions = {
       });
 
     await settings.set('upload.monthColumns', columns);
+    return { message: 'Saved' };
+  },
+
+  /**
+   * How many photos each group is asked for per month. Admins only: it is the target the
+   * whole household works towards, and a month card turns green once a group reaches it.
+   */
+  setPhotosPerMonth: async ({ request, locals }) => {
+    const data = await request.formData();
+    requireAdmin(locals.user);
+
+    const count = Number(data.get('photosPerMonth'));
+    if (!Number.isInteger(count)) return fail(400, { message: 'Pick a whole number of photos' });
+    if (count < settings.PHOTOS_PER_MONTH_MIN || count > settings.PHOTOS_PER_MONTH_MAX)
+      return fail(400, {
+        message: `Photos per month must be between ${settings.PHOTOS_PER_MONTH_MIN} and ${settings.PHOTOS_PER_MONTH_MAX}`
+      });
+
+    await settings.set('upload.photosPerMonth', count);
     return { message: 'Saved' };
   },
 

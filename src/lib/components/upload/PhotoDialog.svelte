@@ -42,8 +42,8 @@
     /** Whether this user may edit or delete this photo. */
     canManage: boolean;
     /**
-     * Why editing is off, when it is. A published year is frozen for everyone, so "uploaded
-     * by someone else" would be plainly wrong for your own photo in one.
+     * Why editing is off, when it is. A published or locked year is frozen for everyone, so
+     * "uploaded by someone else" would be plainly wrong for your own photo in one.
      */
     locked?: boolean;
     /**
@@ -329,7 +329,7 @@
                 {selected.length === 0 ? 'Nobody tagged yet' : `${selected.length} tagged`}
               </p>
               <!-- Read-only when this photo cannot be edited: another group's, or a year
-                   that has been published. -->
+                   that has been published or locked. -->
               <PeoplePicker {people} {families} {familyId} disabled={!canManage} bind:selected />
             </div>
 
@@ -508,7 +508,7 @@
                 </form>
               {:else}
                 <span class="text-xs text-gray-400">
-                  {locked ? 'Published \u2014 unpublish the year to edit' : 'Uploaded by someone else'}
+                  {locked ? 'Locked for the yearbook' : 'Uploaded by someone else'}
                 </span>
               {/if}
 

@@ -6,7 +6,7 @@
   import ExportButton from '$lib/components/admin/ExportButton.svelte';
   import Avatar from '$lib/components/Avatar.svelte';
   import { enhance } from '$app/forms';
-  import { BookOpen, Eye, EyeOff, BookMarked, Check } from 'lucide-svelte';
+  import { BookOpen, Eye, EyeOff, BookMarked, Check, Lock, LockOpen } from 'lucide-svelte';
 
   let title = $state('');
   let photobookUrl = $state('');
@@ -157,6 +157,66 @@
           {/if}
         </button>
       </div>
+    </form>
+  </div>
+
+  <!-- Lock the year's photos. Its own form, like the photo book link: it has to be usable
+       both before publishing (the point of it) and after. -->
+  <div
+    class="mt-3 rounded-xl p-4 shadow-xs outline sm:px-6 {data.locked
+      ? 'bg-amber-50 outline-amber-600/20 dark:bg-amber-400/10 dark:outline-amber-400/20'
+      : 'bg-white outline-gray-900/10 dark:bg-white/5 dark:outline-white/10'}"
+    data-testid="lock-panel"
+  >
+    <form
+      method="POST"
+      action="?/setLocked"
+      use:enhance={() => async ({ update }) => await update({ reset: false })}
+      class="flex flex-wrap items-end justify-between gap-4"
+    >
+      <input type="hidden" name="year" value={data.year} />
+
+      <div class="grow">
+        <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+          {#if data.locked}
+            <Lock class="size-4" />
+            {data.year}'s photos are locked
+          {:else}
+            <LockOpen class="size-4" />
+            Lock {data.year}'s photos
+          {/if}
+        </h2>
+        <p class="mt-0.5 max-w-prose text-sm text-gray-500 dark:text-gray-400">
+          {#if data.locked}
+            Nobody can upload, edit, move or delete photos in {data.year}, admins included.
+            Unlock to reopen it.
+          {:else if data.published}
+            Published years are already frozen. Locking keeps {data.year} frozen if you
+            unpublish it.
+          {:else}
+            Freezes every group's photos so you can build the photo book from a set that won't
+            change, without publishing the yearbook yet.
+          {/if}
+        </p>
+      </div>
+
+      <button
+        type="submit"
+        name="locked"
+        value={data.locked ? 'false' : 'true'}
+        data-testid="toggle-locked"
+        class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold {data.locked
+          ? 'text-gray-700 outline outline-gray-300 hover:bg-gray-100 dark:text-gray-200 dark:outline-white/15 dark:hover:bg-white/10'
+          : 'bg-gray-900 text-white hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200'}"
+      >
+        {#if data.locked}
+          <LockOpen class="size-4" />
+          Unlock
+        {:else}
+          <Lock class="size-4" />
+          Lock
+        {/if}
+      </button>
     </form>
   </div>
 

@@ -121,9 +121,15 @@
     >
       <Lock class="size-3.5 shrink-0" />
       <span>
-        {data.year} is published, so its photos cannot be changed. Unpublish it to edit.
+        {#if data.lockReason === 'published'}
+          {data.year} is published, so its photos cannot be changed. Unpublish it to edit.
+        {:else}
+          {data.year}'s photos are locked. Unlock them to edit.
+        {/if}
       </span>
-      <a href="/admin?year={data.year}" class="font-semibold underline">Unpublish</a>
+      <a href="/admin?year={data.year}" class="font-semibold underline">
+        {data.lockReason === 'published' ? 'Unpublish' : 'Unlock'}
+      </a>
     </p>
   {/if}
 
