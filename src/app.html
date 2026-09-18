@@ -93,7 +93,16 @@
 		     one file. Browsers ask for /favicon.ico on their own, but naming it keeps a cached
 		     default from winning. -->
 		<link rel="icon" href="/favicon.ico" sizes="any" />
-		<link rel="manifest" href="/manifest.webmanifest" />
+		<!--
+		  `crossorigin="use-credentials"` is load-bearing behind Cloudflare Access.
+
+		  A manifest is fetched with credentials *omitted* by default, even same-origin. Access
+		  therefore sees an anonymous request, answers with a redirect to its login host, and the
+		  browser refuses that cross-origin hop for want of an `Access-Control-Allow-Origin`
+		  header -- so the manifest never loads and the install prompt has no name or icons.
+		  This attribute sends the session cookie, which Access accepts.
+		-->
+		<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
 		<meta name="theme-color" content="#111827" />
 
 		<!-- iOS ignores most of the manifest. Home-screen installs read these instead: the

@@ -87,6 +87,10 @@ fails silently and the phone draws its own grey letter tile instead of the app i
 server already serves these seven paths without an identity; Access has to agree. Nothing in
 them is private.
 
+(The manifest is also fetched without cookies by default, which Access reads as anonymous
+even when you are signed in. `src/app.html` handles that with
+`crossorigin="use-credentials"` on the manifest link.)
+
 ## Developing
 
 The dev server runs in a container; your editor runs on macOS. Those need **two

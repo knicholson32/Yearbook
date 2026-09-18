@@ -76,6 +76,20 @@ browsing session**. Behind Cloudflare Access that request comes back as the logi
 `200 text/html`, not a PNG -- so the fetch fails and iOS draws its own grey letter tile.
 The symptom looks like a broken icon file; the icon is fine.
 
+The manifest has a second, separate cause, and it bites even for a signed-in user: a
+manifest is fetched with **credentials omitted by default**, same-origin included. Access
+sees an anonymous request and redirects to its login host, and the browser then refuses that
+cross-origin hop for want of an `Access-Control-Allow-Origin` header:
+
+```
+Access to manifest at 'https://<team>.cloudflareaccess.com/cdn-cgi/access/login/...'
+(redirected from 'https://<host>/manifest.webmanifest') has been blocked by CORS policy
+```
+
+`src/app.html` therefore carries `crossorigin="use-credentials"` on the manifest link, which
+sends the session cookie. Do not drop that attribute. There is no equivalent for
+`rel="apple-touch-icon"`, so the Bypass policy is still the only fix for the icon itself.
+
 Both sides have to agree. The app allows these paths, and Access needs a Bypass policy for
 the same list, or the request never reaches the origin. If someone reports a generated
 letter tile instead of the app icon, check this first:
