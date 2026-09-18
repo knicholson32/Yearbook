@@ -141,7 +141,7 @@ export const actions = {
 
   /**
    * How many photos each group is asked for per month. Admins only: it is the target the
-   * whole household works towards, and a month card turns green once a group reaches it.
+   * whole household works towards, and a month card turns green when a group has exactly that many.
    */
   setPhotosPerMonth: async ({ request, locals }) => {
     const data = await request.formData();

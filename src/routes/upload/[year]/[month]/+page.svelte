@@ -185,17 +185,17 @@
     </div>
   {/if}
 
-  {#if data.images.length >= data.photosPerMonth}
-    <!-- The same target that turns this month's card green on the overview. Counts only this
-         group's photos, like everything else on the page. -->
+  {#if data.images.length === data.photosPerMonth}
+    <!-- The same target that turns this month's card green on the overview: exactly that
+         many, not at least. Counts only this group's photos, like everything else on the page. -->
     <p
       class="mt-4 flex flex-wrap items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900 outline outline-emerald-600/20 dark:bg-emerald-400/10 dark:text-emerald-200 dark:outline-emerald-400/20"
       data-testid="month-done-notice"
     >
       <CircleCheck class="size-4 shrink-0" />
       <span>
-        {title} is done: your group has {data.images.length}
-        {basicPlural('photo', data.images.length)}, and the goal is {data.photosPerMonth}.
+        {title} is done: your group has exactly the {data.photosPerMonth}
+        {basicPlural('photo', data.photosPerMonth)} it needs.
       </span>
     </p>
   {/if}

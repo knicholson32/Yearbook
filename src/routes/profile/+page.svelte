@@ -334,8 +334,8 @@
             Photos per month
           </label>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            How many photos each group should add to every month. A month turns green once a
-            group has that many.
+            How many photos each group should add to every month. A month turns green when a
+            group has exactly that many.
           </p>
         </div>
 

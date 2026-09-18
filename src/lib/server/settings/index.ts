@@ -9,7 +9,7 @@ export const TypeNames = {
 	'general.timezone': env.TZ ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
 	'general.encKey': 'UNSET',
 	'general.familyName': '',
-	'upload.monthColumns': 3,
+	'upload.monthColumns': 4,
 	'upload.photosPerMonth': 4,
 	'years.background': 'plain',
 };

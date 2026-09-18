@@ -93,7 +93,7 @@
   <!-- Month grid -->
   <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
     {#each data.months as month (month.month)}
-      {@const done = month.count >= data.photosPerMonth}
+      {@const done = month.count === data.photosPerMonth}
       <a
         href="/upload/{data.year}/{month.month}"
         data-testid="month-card"
@@ -131,7 +131,7 @@
         {#if done}
           <span
             class="absolute top-2 right-2 flex size-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm ring-2 ring-white/80 dark:bg-emerald-400 dark:text-gray-900 dark:ring-gray-900/60"
-            title="{data.photosPerMonth} or more photos: this month is done"
+            title="Exactly {data.photosPerMonth} photos: this month is done"
             data-testid="month-done"
           >
             <Check class="size-3.5" strokeWidth={3} />

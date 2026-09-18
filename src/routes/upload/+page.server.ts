@@ -26,7 +26,7 @@ export const load = async ({ url, locals }) => {
     years,
     months,
     pending,
-    /** The admin's target per group per month. A month at or past it is marked done. */
+    /** The admin's target per group per month. A month with exactly that many is marked done. */
     photosPerMonth,
     lockReason,
     total: months.reduce((sum, m) => sum + m.count, 0)
