@@ -61,7 +61,7 @@ keeps `.env` out, so a local build is already the CI case:
 ```sh
 docker build -f docker/Dockerfile --target prod -t yearbook:test .
 docker run --rm -p 4173:3000 -v "$PWD/library/db:/db" -v "$PWD/library/files:/files" \
-  -e ADMIN_EMAILS=you@example.com yearbook:test
+  yearbook:test
 ```
 
 Mount copies of `library/` rather than the real thing if the run might write.
@@ -635,9 +635,13 @@ else. A new setting needs that decision made explicitly; the page is not admin-o
 ### Admin dashboard and exports
 
 `/admin` (year, via `?year=`) and `/admin/<year>/<month>`. Gated by `requireAdmin`, which
-answers **404**, not 403 -- a normal user must not learn the area exists. Admin is granted by
-the `ADMIN_EMAILS` env var (comma separated) and applied to the session in `lookupUser`;
-nothing writes `'admin'` to `User.role` in the database.
+answers **404**, not 403 -- a normal user must not learn the area exists.
+
+Admin lives in `User.role` in the database and nowhere else; there is no environment
+variable for it. The first account created while no administrator exists is made one (the
+check runs inside the signup transaction, so two simultaneous first signups cannot both
+win), and after that the `setAdmin` action on the dashboard grants and revokes. It refuses
+to demote the last administrator: nothing in the app can put one back.
 
 These pages are the one place that deliberately ignores `visibleImagesWhere`. Everything in
 `src/lib/server/export/stats.ts` queries across every family. Only call it behind

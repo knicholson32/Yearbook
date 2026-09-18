@@ -29,12 +29,14 @@ export const load = async ({ parent, url, fetch, request }) => {
 
 
 export const actions = {
-  create: async ({ request, url, params }) => {
+  create: async ({ request, locals }) => {
 
     const data = await request.formData();
     
     const image = data.get('image');
-    const email = request.headers.get('cf-access-authenticated-user-email');
+    // `locals.email` comes from the verified Access token; the raw header is caller-supplied
+    // and would let anyone create an account in someone else's name.
+    const email = locals.email;
     const name = data.get('name')?.toString();
     const group = data.get('group')?.toString();
 
@@ -78,8 +80,13 @@ export const actions = {
           ? await tx.person.create({ data: { name, familyId } })
           : await tx.person.update({ where: { id: claimed.id }, data: { familyId } });
 
+        // Whoever signs up while the database has no administrator is standing the server
+        // up, so they get the dashboard and can promote everyone after them. Checked inside
+        // the transaction so two simultaneous first signups cannot both come out as admin.
+        const role = (await tx.user.count({ where: { role: 'admin' } })) === 0 ? 'admin' : 'user';
+
         await tx.user.create({
-          data: { id: email, personId: person.id, gravatarHash: hash, role: 'user' }
+          data: { id: email, personId: person.id, gravatarHash: hash, role }
         });
 
         return person.id;

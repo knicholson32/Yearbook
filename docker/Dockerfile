@@ -100,6 +100,10 @@ ENV ORIGIN="http://localhost:${SERVER_PORT}"
 # 11MB Max body size (for image uploads)
 ENV BODY_SIZE_LIMIT=11000000
 ENV PROC_SHELL='/bin/sh'
+# Marks this as the shipped image. `$lib/server/auth` refuses to fall back to trusting the
+# `cf-access-authenticated-user-email` header when it is set, so a tunnel pointed at a
+# hostname with no Access policy fails closed instead of accepting a self-declared identity.
+ENV YEARBOOK_PACKAGED=1
 
 WORKDIR /app
 

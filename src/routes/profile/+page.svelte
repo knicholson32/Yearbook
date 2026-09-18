@@ -8,7 +8,8 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import { cn } from "$lib/utils.js";
   import Avatar from "$lib/components/Avatar.svelte";
-  import { Trash2, UserPlus } from "lucide-svelte";
+  import { invalidateAll } from "$app/navigation";
+  import { Trash2, UserPlus, ShieldCheck } from "lucide-svelte";
   import ProgressBar from "$lib/components/ProgressBar.svelte";
   import * as Dialog from "$lib/components/ui/dialog";
   import CropDialog, { type Rect } from "$lib/components/CropDialog.svelte";
@@ -17,6 +18,10 @@
   import { applyResult, submitWithProgress } from "$lib/upload";
 
   import type { PageProps } from './$types';
+
+  let adminMessage = $state<string | null>(null);
+  let adminError = $state(false);
+  let adminTimer: ReturnType<typeof setTimeout> | undefined;
     import { enhance } from "$app/forms";
   let { data, form }: PageProps = $props();
 
@@ -563,6 +568,96 @@
     {/if}
   </Dialog.Content>
 </Dialog.Root>
+
+{#if data.isAdmin}
+  <!-- Admins only, and deliberately here rather than on the dashboard: this is about who
+       people are, like the rest of this page, not about a particular year's photos. -->
+  <div class="mx-auto max-w-4xl px-4 pb-12 sm:px-6 lg:px-8">
+    <h2 class="mt-8 mb-2 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+      <ShieldCheck class="size-4" />
+      Administrators
+    </h2>
+    <div
+      class="rounded-xl bg-white shadow-xs outline outline-gray-900/10 dark:bg-white/5 dark:outline-white/10"
+      data-testid="admins-panel"
+    >
+      <p class="border-b border-gray-900/10 px-4 py-4 text-sm text-gray-500 sm:px-8 dark:border-white/10 dark:text-gray-400">
+        Administrators see every group's photos, file pending uploads, export a year and
+        publish it. Everyone else sees only their own group.
+      </p>
+
+      <ul class="divide-y divide-gray-900/10 dark:divide-white/10">
+        {#each data.accounts as account (account.email)}
+          <li class="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-8">
+            <Avatar
+              imageId={account.imageId}
+              gravatarHash={account.gravatarHash}
+              version={account.version}
+              name={account.name}
+              size={32}
+              class="shrink-0"
+            />
+            <div class="min-w-0 grow">
+              <p class="truncate text-sm text-gray-900 dark:text-white">
+                {account.name}
+                {#if account.isSelf}
+                  <span class="text-gray-400 dark:text-gray-500">(you)</span>
+                {/if}
+              </p>
+              <p class="truncate text-xs text-gray-500 dark:text-gray-400">{account.email}</p>
+            </div>
+
+            {#if account.isAdmin}
+              <span
+                class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-400"
+              >
+                Administrator
+              </span>
+            {/if}
+
+            <form
+              method="POST"
+              action="?/setAdmin"
+              use:enhance={() => async ({ result }) => {
+                clearTimeout(adminTimer);
+                adminError = result.type === 'failure';
+                // Only these two carry a payload; a redirect or an error has no `data`.
+                const payload =
+                  result.type === 'failure' || result.type === 'success'
+                    ? (result.data as { message?: string } | undefined)
+                    : undefined;
+                adminMessage = payload?.message ?? (adminError ? 'Could not change that' : null);
+                adminTimer = setTimeout(() => (adminMessage = null), 3000);
+                // `invalidateAll` rather than `update()`: this page renders `form.message` in
+                // two other cards, and `form` is shared by every action on the route, so
+                // letting this one populate it prints our result -- in red -- under someone
+                // else's Save button. Reloading the data refreshes the list without that.
+                await invalidateAll();
+              }}
+            >
+              <input type="hidden" name="email" value={account.email} />
+              <input type="hidden" name="admin" value={account.isAdmin ? 'false' : 'true'} />
+              <Button type="submit" variant="outline" data-testid="toggle-admin">
+                {account.isAdmin ? 'Remove' : 'Make administrator'}
+              </Button>
+            </form>
+          </li>
+        {/each}
+      </ul>
+
+      {#if adminMessage !== null}
+        <p
+          class="border-t border-gray-900/10 px-4 py-3 text-sm sm:px-8 dark:border-white/10 {adminError
+            ? 'text-red-600 dark:text-red-400'
+            : 'text-emerald-700 dark:text-emerald-400'}"
+          data-testid="admins-message"
+        >
+          {adminMessage}
+        </p>
+      {/if}
+    </div>
+  </div>
+{/if}
 
 <CropDialog
   imageId={cropping?.imageId ?? null}

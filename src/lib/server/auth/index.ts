@@ -4,11 +4,16 @@ import jwksClient from 'jwks-rsa';
 import { prisma } from '$lib/server/db';
 import { env } from '$env/dynamic/private';
 import { error } from '@sveltejs/kit';
+import type { RequestEvent } from '@sveltejs/kit';
 
-// 1. Configure configuration variables
-const TEAM_DOMAIN = 'https://eroute.cloudflareaccess.com';
+// Which Cloudflare Access application to trust. These are per-deployment: a second
+// hostname is usually a second Access application with its own audience tag, and a token
+// minted for one is rejected by the other. Overridable so the same image can be pointed at
+// a different tunnel without a rebuild; the defaults are the existing dev application.
+const TEAM_DOMAIN = env.CF_ACCESS_TEAM_DOMAIN ?? 'https://eroute.cloudflareaccess.com';
 const CERTS_URL = `${TEAM_DOMAIN}/cdn-cgi/access/certs`;
-const APPLICATION_AUDIENCE = '0efa1a512f491d5d3a16e844c6428cd336ff5639516f2c0c71b73f346a024d4c';
+const APPLICATION_AUDIENCE =
+  env.CF_ACCESS_AUD ?? '0efa1a512f491d5d3a16e844c6428cd336ff5639516f2c0c71b73f346a024d4c';
 
 // 2. Initialize the JWKS client to pull public certificates dynamically
 const client = jwksClient({
@@ -61,27 +66,10 @@ export const validateCloudflareJWT = (token: string): Promise<JwtPayload> => {
   });
 }
 
-/**
- * Emails promoted to admin, from `ADMIN_EMAILS` (comma separated).
- *
- * `User.role` has always existed but nothing ever wrote 'admin' to it, so the admin paths
- * were unreachable. Granting it from the environment rather than the database keeps it out
- * of the app's own UI: an admin cannot be created by anyone who is merely signed in, and
- * revoking one is a restart rather than a migration.
- */
-const adminEmails = (): string[] =>
-	(env.ADMIN_EMAILS ?? '')
-		.split(',')
-		.map((entry) => entry.trim().toLowerCase())
-		.filter((entry) => entry.length > 0);
-
-export const isAdminEmail = (email: string | null | undefined): boolean =>
-	typeof email === 'string' && adminEmails().includes(email.toLowerCase());
-
 export type SessionUser = NonNullable<Awaited<ReturnType<typeof lookupUser>>>;
 
 const lookupUser = async (email: string) => {
-  const user = await prisma.user.findUnique({
+  return await prisma.user.findUnique({
     where: { id: email },
     include: {
       person: {
@@ -93,42 +81,95 @@ const lookupUser = async (email: string) => {
       }
     }
   });
-
-  if (user === null) return null;
-
-  // Applied to the session rather than written back, so the environment stays the single
-  // source of truth and removing an address demotes on the next request.
-  return isAdminEmail(email) ? { ...user, role: 'admin' } : user;
 };
 
 /**
- * Resolve the signed-in user from the Cloudflare Access headers on a request.
+ * Whether nobody is an administrator yet.
  *
- * NOTE: JWT validation failures are logged but not enforced, matching the behaviour this
- * had while it lived in `+layout.server.ts`. Until the `error(403)` below is uncommented,
- * the `cf-access-authenticated-user-email` header is trusted on its own -- which is fine
- * behind the tunnel, where Cloudflare Access sets it, but means anything that can reach
- * the origin directly can spoof a user.
+ * Only true on a database that has never had one, which in practice means a fresh install:
+ * the first person to create an account is whoever is standing the server up, so they are
+ * made an administrator and can promote everyone else from the dashboard. Once one exists
+ * this is false forever and admin comes only from `User.role`.
  */
-export const getSession = async (request: Request) => {
-  const email = request.headers.get('cf-access-authenticated-user-email');
-  const token = request.headers.get('cf-access-jwt-assertion');
+export const noAdminExists = async (): Promise<boolean> =>
+  (await prisma.user.count({ where: { role: 'admin' } })) === 0;
 
-  if (!token || typeof token !== 'string') {
-    // error(403, 'Access denied');
-  }
+/** Loopback and RFC1918 addresses, including IPv4-mapped IPv6 forms. */
+const isLocalAddress = (address: string): boolean => {
+  const a = address.replace(/^::ffff:/i, '');
+  if (a === '::1' || a === 'localhost') return true;
+  if (/^f[cd][0-9a-f]{2}:/i.test(a)) return true; // fc00::/7, unique local
+  if (/^fe80:/i.test(a)) return true; // link local
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(a);
+  if (m === null) return false;
+  const [x, y] = [Number(m[1]), Number(m[2])];
+  if (x === 127) return true;
+  if (x === 10) return true;
+  if (x === 192 && y === 168) return true;
+  if (x === 172 && y >= 16 && y <= 31) return true; // includes Docker's bridge
+  return false;
+};
 
+/**
+ * Whether an unauthenticated request may name itself with the email header alone.
+ *
+ * Only for running the app on a developer's own machine, where there is no Access in front
+ * to mint a token. Two conditions, both required:
+ *
+ *  - No `cf-access-jwt-assertion` at all. Anything that came through the tunnel carries one,
+ *    and a request that carries one is verified rather than trusted, so a caller cannot
+ *    downgrade itself by sending a bad token -- an unparseable token is a 403, not a bypass.
+ *  - The connection came from loopback or a private range.
+ *
+ * And never in the packaged image, whatever the address looks like. `cloudflared` dials the
+ * origin from loopback, so a tunnel pointed at a hostname with no Access policy would arrive
+ * JWT-less from 127.0.0.1 and otherwise hand the whole internet an admin login.
+ */
+const mayTrustEmailHeader = (event: RequestEvent): boolean => {
+  if (env.YEARBOOK_PACKAGED === '1') return false;
   try {
-    await validateCloudflareJWT(token ?? '');
-  } catch (e: any) {
-    console.error('JWT validation failed:', e);
-    // error(403, 'Access denied');
+    return isLocalAddress(event.getClientAddress());
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Resolve the signed-in user for a request.
+ *
+ * The identity comes out of the *verified* token, not out of
+ * `cf-access-authenticated-user-email`. That header is set by Cloudflare Access but nothing
+ * stops a caller who can reach the origin from writing it themselves, so trusting it while
+ * also validating the JWT would leave every account -- admin included -- impersonable by
+ * anyone holding any valid token for this application.
+ */
+export const getSession = async (event: RequestEvent) => {
+  const token = event.request.headers.get('cf-access-jwt-assertion');
+
+  if (token === null || token === '') {
+    if (!mayTrustEmailHeader(event)) error(403, 'Access denied');
+    const email = event.request.headers.get('cf-access-authenticated-user-email');
+    console.warn(
+      `No Access token on a local request; trusting the email header (${email ?? 'none'}). ` +
+        'This never happens in the packaged image.'
+    );
+    return { email, user: email === null ? null : await lookupUser(email) };
   }
 
-  return {
-    email,
-    user: email === null ? null : await lookupUser(email)
-  };
+  let payload: JwtPayload;
+  try {
+    payload = await validateCloudflareJWT(token);
+  } catch (e) {
+    console.error('JWT validation failed:', e);
+    error(403, 'Access denied');
+  }
+
+  // Service tokens authenticate an application rather than a person and carry no email;
+  // there is no account for them to be, so they get no session.
+  const email = typeof payload.email === 'string' && payload.email !== '' ? payload.email : null;
+  if (email === null) error(403, 'Access denied');
+
+  return { email, user: await lookupUser(email) };
 };
 
 /**

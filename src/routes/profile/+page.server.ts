@@ -64,7 +64,35 @@ export const load = async ({ locals }) => {
   const yearsBackground = await settings.get('years.background');
   const familyName = await settings.get('general.familyName');
 
+  // Only admins are shown the administrators panel, so only they need the list. Small by
+  // nature -- one row per person with an account -- so there is nothing to paginate.
+  const accounts = !isAdmin(locals.user)
+    ? []
+    : (
+        await prisma.user.findMany({
+          select: {
+            id: true,
+            role: true,
+            gravatarHash: true,
+            person: {
+              select: { name: true, profileImage: { select: { id: true, updatedAt: true } } }
+            }
+          },
+          orderBy: { person: { name: 'asc' } }
+        })
+      ).map((a) => ({
+        email: a.id,
+        name: a.person.name,
+        isAdmin: a.role === 'admin',
+        isSelf: a.id === locals.user?.id,
+        gravatarHash: a.gravatarHash,
+        imageId: a.person.profileImage?.id ?? null,
+        // Busts the browser cache when a picture is recropped.
+        version: a.person.profileImage?.updatedAt.getTime() ?? null
+      }));
+
   return {
+    accounts,
     families,
     group,
     monthColumns,
@@ -114,6 +142,42 @@ export const actions = {
    * Unlike the other settings on this page, this one names the household rather than
    * adjusting a view, so it is not something any signed-in member should be able to rewrite.
    */
+  /**
+   * Grant or revoke the admin dashboard.
+   *
+   * Administrators live in `User.role`, not in the environment, so this is the only way one
+   * is made after the first account on a fresh install. Demoting is allowed -- including
+   * yourself, which is how you hand the job over -- except for the last one: a database with
+   * no administrator can only be repaired by hand, and nothing in the app can put one back.
+   */
+  setAdmin: async ({ request, locals }) => {
+    requireAdmin(locals.user);
+    const data = await request.formData();
+
+    const email = data.get('email')?.toString() ?? '';
+    const makeAdmin = data.get('admin') === 'true';
+    if (email === '') return fail(400, { message: 'Which account?' });
+
+    const target = await prisma.user.findUnique({ where: { id: email }, select: { role: true } });
+    if (target === null) return fail(404, { message: 'No such account' });
+
+    if (!makeAdmin && target.role === 'admin') {
+      const admins = await prisma.user.count({ where: { role: 'admin' } });
+      if (admins <= 1) return fail(409, { message: 'Someone has to stay an administrator' });
+    }
+
+    await prisma.user.update({
+      where: { id: email },
+      data: { role: makeAdmin ? 'admin' : 'user' }
+    });
+
+    return {
+      message: makeAdmin
+        ? `${email} is now an administrator`
+        : `${email} is no longer an administrator`
+    };
+  },
+
   setFamilyName: async ({ request, locals }) => {
     const data = await request.formData();
     requireAdmin(locals.user);
